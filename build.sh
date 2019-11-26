@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+function docker_tag_exists() {
+    REPOSITORY=${1}
+    TAG=${2}
+    URL=https://index.docker.io/v1/repositories/${REPOSITORY}/tags/${TAG}
+    curl --silent -f -lSL ${URL} 2> /dev/null > /dev/null
+}
+function get_json_attribute() {
+    jq -r ".${2}" $1;
+}
+function build_project() {
+    DIRECTORY=$1
+    META_FILE=${DIRECTORY}/meta.json
+
+    echo "> build project '${1}'"
+    if [[ ! -f ${META_FILE} ]]; then
+        echo "Unable to locate meta file '${META_FILE}'" > /dev/stderr;
+        exit 126;
+    fi;
+
+    TAG=$(get_json_attribute ${META_FILE} tag)
+    REPOSITORY=$(get_json_attribute ${META_FILE} repository)
+    echo "Repository ${REPOSITORY} Tag ${TAG}"
+
+    if docker_tag_exists ${REPOSITORY} ${TAG}; then
+        return 0;
+    fi;
+
+    IMAGE_TAG=${REPOSITORY}:${TAG}
+    DOCKER_FILE=${DIRECTORY}/Dockerfile
+    echo ">> building file ${DOCKER_FILE}"
+    docker build --rm -t ${IMAGE_TAG} -f ${DOCKER_FILE} ./${DIRECTORY} || exit 1
+    echo ">> pushing image ${IMAGE_TAG}"
+    docker push ${IMAGE_TAG} || exit 2
+}
+
+if [[ -z ${1} ]]; then
+    echo "> finding projects";
+    for D in `find . -type f -name 'meta.json' | sed -E 's|/[^/]+$||' |sort -u`
+    do
+        build_project $D;
+    done
+    exit 0;
+fi;
+
+build_project ${1}
