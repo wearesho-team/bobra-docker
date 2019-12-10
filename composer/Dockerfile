@@ -1,4 +1,4 @@
-FROM php:7.3-alpine AS install
+FROM php:7.4-alpine AS install
 ENV COMPOSER_ALLOW_SUPERUSER=1
 WORKDIR /usr/src/app
 RUN curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer && \
