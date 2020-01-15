@@ -23,16 +23,20 @@ function build_project() {
     REPOSITORY=$(get_json_attribute ${META_FILE} repository)
     echo "Repository ${REPOSITORY} Tag ${TAG}"
 
-    if docker_tag_exists ${REPOSITORY} ${TAG}; then
-        return 0;
+    if !([ -z ${PUBLISH} ]) && [ "${PUBLISH}" != "force" ] && docker_tag_exists ${REPOSITORY} ${TAG}; then
+        echo ">> already exists";
+        return;
     fi;
 
     IMAGE_TAG=${REPOSITORY}:${TAG}
     DOCKER_FILE=${DIRECTORY}/Dockerfile
     echo ">> building file ${DOCKER_FILE}"
     docker build --rm -t ${IMAGE_TAG} -f ${DOCKER_FILE} ./${DIRECTORY} || exit 1
-    echo ">> pushing image ${IMAGE_TAG}"
-    docker push ${IMAGE_TAG} || exit 2
+
+    if !([[ -z ${PUBLISH} ]]); then
+        echo ">> pushing image ${IMAGE_TAG}"
+        docker push ${IMAGE_TAG} || exit 2
+    fi;
 }
 
 if [[ -z ${1} ]]; then

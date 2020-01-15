@@ -5,6 +5,8 @@ Dockerfile and resources for Bobra docker base images.
 Build all projects
 ```bash
 ./build.sh
+# or build & publish
+PUBLISH=1 ./build.sh
 ```
 Build specified project
 ```bash
