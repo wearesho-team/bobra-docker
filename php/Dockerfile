@@ -1,4 +1,4 @@
-FROM php:7.4-alpine
+FROM php:7.4.2-alpine
 
 RUN PHP_CGI=no PHP_DEBUG=no PHP_PEAR=no \
     && set -ex \
