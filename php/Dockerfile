@@ -1,6 +1,6 @@
 FROM php:7.4-alpine
 
-RUN find /usr/local -type f ! -name 'docker-*' -delete \
+RUN PHP_CGI=no PHP_DEBUG=no PHP_PEAR=no \
     && set -ex \
     && apk add --no-cache --update \
         libgd libwebp libjpeg libpng freetype \
@@ -16,21 +16,27 @@ RUN find /usr/local -type f ! -name 'docker-*' -delete \
         libsodium-dev libsodium \
         oniguruma-dev oniguruma \
         icu-dev icu-libs\
+        pcre-dev pcre \
         curl-dev \
         alpine-sdk linux-headers \
     && docker-php-source extract
 
 RUN cd /usr/src/php \
-    && PHP_CGI=no PHP_DEBUG=no PHP_PEAR=no ./configure $(php-config --configure-options) \
+    && export CFLAGS="$PHP_CFLAGS" \
+       		CPPFLAGS="$PHP_CPPFLAGS" \
+       		LDFLAGS="$PHP_LDFLAGS" \
+    && ./configure \
+        --build=x86_64-linux-musl \
+        --with-config-file-path=/usr/local/etc/php \
+        --with-config-file-scan-dir=/usr/local/etc/php/conf.d \
+        --enable-option-checking=fatal \
         --without-pear \
-        --disable-cgi \
-        --without-ftp \
-        --without-mysqlnd \
-        --without-phpdbg \
         --with-libdir=/usr/lib \
         --with-pgsql \
+        --with-sodium \
+        --with-openssl \
+        --with-mhash \
         --with-pdo-pgsql \
-        --disable-sqlite3 \
         --disable-mysqlnd \
         --disable-session \
         --disable-cgi \
@@ -42,17 +48,31 @@ RUN cd /usr/src/php \
         --enable-simplexml \
         --with-jpeg \
         --with-webp \
+        --enable-mbstring \
         --with-freetype \
         --with-zip \
         --enable-gd \
+        --with-openssl \
+        --with-zlib \
+        --with-curl \
+        --enable-fpm \
+    && find /usr/local -type f ! -name 'docker-*' -delete \
     && make -j "$(nproc)" \
     && find -type f -name '*.a' -delete \
+    && rm -r /usr/local/etc/php/ \
     && make install \
     && (find /usr/local/bin /usr/local/sbin -type f -perm +0111 -exec strip --strip-all '{}' + || true) \
     && make clean \
     && apk del *-dev alpine-sdk curl gd zip linux-headers \
-    && docker-php-source delete \
+    && docker-php-source delete
+
+RUN apk add libsodium-dev && mkdir -p /usr/local/etc/php/conf.d/ \
+    && docker-php-ext-configure opcache --enable-opcache \
+    && docker-php-ext-install opcache sodium \
+    && rm -r /tmp && mkdir /tmp \
     && php -v && php -m
 
-COPY php.ini /usr/local/etc/php/php.ini
-WORKDIR /var/www
+COPY php.ini /usr/local/etc/php/
+COPY php-fpm.conf /usr/local/etc/php-fpm.conf
+
+WORKDIR /app

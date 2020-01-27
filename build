@@ -32,10 +32,11 @@ function build_project() {
     DOCKER_FILE=${DIRECTORY}/Dockerfile
     echo ">> building file ${DOCKER_FILE}"
     docker build --rm -t ${IMAGE_TAG} -f ${DOCKER_FILE} ./${DIRECTORY} || exit 1
+    docker tag ${IMAGE_TAG} ${REPOSITORY}:latest
 
     if !([[ -z ${PUBLISH} ]]); then
         echo ">> pushing image ${IMAGE_TAG}"
-        docker push ${IMAGE_TAG} || exit 2
+        docker push ${IMAGE_TAG} && docker push ${REPOSITORY}:latest || exit 2
     fi;
 }
 
