@@ -1,7 +1,12 @@
+# syntax = docker/dockerfile:experimental
+
 FROM php:7.4.2-alpine
 
-RUN PHP_CGI=no PHP_DEBUG=no PHP_PEAR=no \
-    && set -ex \
+ENV PHP_CGI=no
+ENV PHP_DEBUG=no
+ENV PHP_PEAR=no
+
+RUN set -ex \
     && apk add --no-cache --update \
         libgd libwebp libjpeg libpng freetype \
         zlib-dev zlib \
@@ -19,9 +24,8 @@ RUN PHP_CGI=no PHP_DEBUG=no PHP_PEAR=no \
         pcre-dev pcre \
         curl-dev \
         alpine-sdk linux-headers \
-    && docker-php-source extract
-
-RUN cd /usr/src/php \
+    && docker-php-source extract \
+    && cd /usr/src/php \
     && export CFLAGS="$PHP_CFLAGS" \
        		CPPFLAGS="$PHP_CPPFLAGS" \
        		LDFLAGS="$PHP_LDFLAGS" \
@@ -63,13 +67,12 @@ RUN cd /usr/src/php \
     && make install \
     && (find /usr/local/bin /usr/local/sbin -type f -perm +0111 -exec strip --strip-all '{}' + || true) \
     && make clean \
-    && apk del *-dev alpine-sdk curl gd zip linux-headers \
-    && docker-php-source delete
-
-RUN apk add libsodium-dev && mkdir -p /usr/local/etc/php/conf.d/ \
+    && apk add libsodium-dev && mkdir -p /usr/local/etc/php/conf.d/ \
     && docker-php-ext-configure opcache --enable-opcache \
     && docker-php-ext-install opcache sodium \
-    && rm -r /tmp && mkdir /tmp \
+    && docker-php-source delete \
+    && apk del *-dev alpine-sdk curl gd zip linux-headers \
+    && rm -r /tmp /var/cache/ && mkdir /tmp /var/cache/ \
     && php -v && php -m
 
 COPY php.ini /usr/local/etc/php/
