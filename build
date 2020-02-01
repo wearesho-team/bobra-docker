@@ -31,7 +31,7 @@ function build_project() {
     IMAGE_TAG=${REPOSITORY}:${TAG}
     DOCKER_FILE=${DIRECTORY}/Dockerfile
     echo ">> building file ${DOCKER_FILE}"
-    docker build --rm -t ${IMAGE_TAG} -f ${DOCKER_FILE} ./${DIRECTORY} || exit 1
+    DOCKER_BUILDKIT=1 docker build --rm -t ${IMAGE_TAG} -f ${DOCKER_FILE} ./${DIRECTORY} || exit 1
     docker tag ${IMAGE_TAG} ${REPOSITORY}:latest
 
     if !([[ -z ${PUBLISH} ]]); then

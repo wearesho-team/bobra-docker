@@ -39,14 +39,14 @@ RUN set -x \
                     --group=nginx \
                     --with-file-aio \
                     --with-threads \
+                    --with-pcre \
                     --with-http_gzip_static_module \
                     --with-http_realip_module \
                     --without-http_rewrite_module \
                     --without-http-cache \
-                    --without-pcre \
                     --add-module=./headers-more-nginx-module-${HEADERS_MORE_VERSION} \
     && make && make install \
-    && apk add --no-cache zlib && apk del .build-deps apk-tools  \
+    && apk add --no-cache zlib pcre && apk del .build-deps apk-tools  \
     && rm -r $tempDir /etc/ssl /etc/apk /etc/nginx \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log \
