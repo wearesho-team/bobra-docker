@@ -1,8 +1,8 @@
-FROM alpine:3.10
+FROM alpine:3.12
 
 LABEL maintainer="Wearesho Team <cto@wearesho.com>"
 
-ENV NGINX_VERSION 1.17.7
+ENV NGINX_VERSION 1.19.0
 ENV HEADERS_MORE_VERSION 0.33
 
 RUN set -x \
