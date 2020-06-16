@@ -4,18 +4,19 @@ Dockerfile and resources for Bobra docker base images.
 ## Building
 Build all projects
 ```bash
-./build.sh
+./build
 # or build & publish
-PUBLISH=1 ./build.sh
+PUBLISH=1 ./build
 ```
 Build specified project
 ```bash
-./build.sh backend
+./build backend
 ```
 
 ## Contents
-- [backend](./backend) - [*[example]*](./backend/examples/Dockerfile) - Bobra Backend (Ubuntu/PHP/Nginx)
-- [composer](./composer) - [*[example]*](./backend/examples/Dockerfile) - PHP Composer Image for dependencies installation using stage builds 
+- [php](./php) - PHP Image for Bobra Backend
+- [nginx](./nginx) - Nginx Image using php-fpm for Bobra Backend
+- [php-composer](./php/composer) - PHP Composer Image for dependencies installation using stage builds 
 
 ## Author
 - [Alexander <Horat1us> Letnikow](mailto:reclamme@gmail.com)
