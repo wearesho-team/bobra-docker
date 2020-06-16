@@ -1,4 +1,4 @@
-FROM composer:1.9 AS vendor
+FROM composer:1.9.3 AS vendor
 
 ENV COMPOSER_HOME /usr/local/var/composer/
 ENV COMPOSER_HTACCESS_PROTECT 0
