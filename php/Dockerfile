@@ -1,6 +1,6 @@
 # syntax = docker/dockerfile:experimental
 
-FROM php:7.4.7-alpine
+FROM php:7.4.12-alpine
 
 ENV PHP_CGI=no
 ENV PHP_DEBUG=no
@@ -73,6 +73,7 @@ RUN set -ex \
     && docker-php-source delete \
     && apk del *-dev alpine-sdk curl gd zip linux-headers \
     && rm -r /tmp /var/cache/ && mkdir /tmp /var/cache/ \
+    && chown -R www-data /tmp \
     && php -v && php -m
 
 COPY php.ini /usr/local/etc/php/
