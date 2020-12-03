@@ -34,7 +34,7 @@ function build_project() {
     DOCKER_BUILDKIT=1 docker build --rm -t ${IMAGE_TAG} -f ${DOCKER_FILE} ./${DIRECTORY} || exit 1
     docker tag ${IMAGE_TAG} ${REPOSITORY}:latest
 
-    if !([[ -z ${PUBLISH} ]]); then
+    if ! ([[ -z ${PUBLISH} ]]); then
         echo ">> pushing image ${IMAGE_TAG}"
         docker push ${IMAGE_TAG} && docker push ${REPOSITORY}:latest || exit 2
     fi;
