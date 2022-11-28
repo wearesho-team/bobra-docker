@@ -2,8 +2,8 @@ FROM alpine:3.12
 
 LABEL maintainer="Wearesho Team <cto@wearesho.com>"
 
-ENV NGINX_VERSION 1.19.0
-ENV HEADERS_MORE_VERSION 0.33
+ENV NGINX_VERSION 1.22.1
+ENV HEADERS_MORE_VERSION 0.34
 
 RUN set -x \
     && addgroup -g 101 -S nginx \
