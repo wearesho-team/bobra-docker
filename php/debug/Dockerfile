@@ -22,7 +22,7 @@ RUN set -ex \
         oniguruma-dev oniguruma \
         icu-dev icu-libs\
         pcre-dev pcre \
-        curl-dev \
+        curl-dev autoconf \
         alpine-sdk linux-headers \
     && docker-php-source extract \
     && cd /usr/src/php \
@@ -68,14 +68,23 @@ RUN set -ex \
     && (find /usr/local/bin /usr/local/sbin -type f -perm +0111 -exec strip --strip-all '{}' + || true) \
     && make clean \
     && apk add libsodium-dev && mkdir -p /usr/local/etc/php/conf.d/ \
+    && wget https://xdebug.org/files/xdebug-3.3.2.tgz \
+    && tar -xvzf xdebug-3.3.2.tgz \
+    && cd xdebug-3.3.2 \
+    && phpize \
+    && ./configure \
+    && make \
+    && cp modules/xdebug.so /usr/local/lib/php/extensions/no-debug-non-zts-20210902 \
+    && cd .. \
     && docker-php-ext-configure opcache --enable-opcache \
     && docker-php-ext-install opcache sodium \
     && docker-php-source delete \
-    && apk del *-dev alpine-sdk curl gd zip linux-headers \
+    && apk del *-dev alpine-sdk curl gd zip linux-headers autoconf \
     && rm -r /tmp /var/cache/ && mkdir /tmp /var/cache/ \
     && chown -R www-data /tmp \
     && php -v && php -m
 
+COPY xdebug.ini /usr/local/etc/php/conf.d/99-xdebug.ini
 COPY php.ini /usr/local/etc/php/
 COPY php-fpm.conf /usr/local/etc/php-fpm.conf
 
