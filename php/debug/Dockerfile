@@ -68,9 +68,9 @@ RUN set -ex \
     && (find /usr/local/bin /usr/local/sbin -type f -perm +0111 -exec strip --strip-all '{}' + || true) \
     && make clean \
     && apk add libsodium-dev && mkdir -p /usr/local/etc/php/conf.d/ \
-    && wget https://xdebug.org/files/xdebug-3.3.2.tgz \
-    && tar -xvzf xdebug-3.3.2.tgz \
-    && cd xdebug-3.3.2 \
+    && wget https://xdebug.org/files/xdebug-3.4.1.tgz \
+    && tar -xvzf xdebug-3.4.1.tgz \
+    && cd xdebug-3.4.1 \
     && phpize \
     && ./configure \
     && make \
