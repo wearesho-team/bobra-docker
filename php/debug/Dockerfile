@@ -74,7 +74,7 @@ RUN set -ex \
     && phpize \
     && ./configure \
     && make \
-    && cp modules/xdebug.so /usr/local/lib/php/extensions/no-debug-non-zts-20210902 \
+    && cp modules/xdebug.so /usr/local/lib/php/extensions/no-debug-non-zts-20240924 \
     && cd .. \
     && docker-php-ext-configure opcache --enable-opcache \
     && docker-php-ext-install opcache sodium \
