@@ -1,6 +1,6 @@
 # syntax = docker/dockerfile:experimental
 
-FROM php:8.4.7-alpine
+FROM php:8.4.8-alpine
 
 ENV PHP_CGI=no
 ENV PHP_DEBUG=no
