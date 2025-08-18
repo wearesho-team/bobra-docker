@@ -2,8 +2,8 @@ FROM alpine:3.12
 
 LABEL maintainer="Wearesho Team <cto@wearesho.com>"
 
-ENV NGINX_VERSION 1.22.1
-ENV HEADERS_MORE_VERSION 0.34
+ENV NGINX_VERSION=1.29.1
+ENV HEADERS_MORE_VERSION=0.39
 
 RUN set -x \
     && addgroup -g 101 -S nginx \
@@ -20,10 +20,20 @@ RUN set -x \
         libedit-dev \
         alpine-sdk \
         findutils \
+        git \
+        cmake \
     && cd ${tempDir} && wget "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" && tar zxvf nginx-${NGINX_VERSION}.tar.gz \
     && cd nginx-${NGINX_VERSION} \
     && wget "https://github.com/openresty/headers-more-nginx-module/archive/v${HEADERS_MORE_VERSION}.tar.gz" -O headers-more-nginx-module.tar.gz \
     && tar zxvf headers-more-nginx-module.tar.gz \
+    && git clone --recurse-submodules -j8 https://github.com/google/ngx_brotli \
+    && cd ngx_brotli/deps/brotli \
+    && mkdir out && cd out \
+    && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_C_FLAGS="-Ofast -m64 -march=native -mtune=native -flto -funroll-loops -ffunction-sections -fdata-sections -Wl,--gc-sections" -DCMAKE_CXX_FLAGS="-Ofast -m64 -march=native -mtune=native -flto -funroll-loops -ffunction-sections -fdata-sections -Wl,--gc-sections" -DCMAKE_INSTALL_PREFIX=./installed .. \
+    && cmake --build . --config Release --target brotlienc \
+    && cd ../../../.. \
+    && export CFLAGS="-m64 -march=native -mtune=native -Ofast -flto -funroll-loops -ffunction-sections -fdata-sections -Wl,--gc-sections" \
+    && export LDFLAGS="-m64 -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections" \
     && ./configure --prefix=/etc/nginx \
                     --sbin-path=/usr/sbin/nginx \
                     --modules-path=/usr/lib/nginx/modules \
@@ -45,6 +55,7 @@ RUN set -x \
                     --without-http_rewrite_module \
                     --without-http-cache \
                     --add-module=./headers-more-nginx-module-${HEADERS_MORE_VERSION} \
+                    --add-module=./ngx_brotli \
     && make && make install \
     && apk add --no-cache zlib pcre && apk del .build-deps apk-tools  \
     && rm -r $tempDir /etc/ssl /etc/apk /etc/nginx \
@@ -52,6 +63,7 @@ RUN set -x \
     && ln -sf /dev/stderr /var/log/nginx/error.log \
     && mkdir -p /var/cache/nginx && chown -R nginx:nginx /var/cache/nginx \
     && nginx -v
+
 
 EXPOSE 80
 COPY config/ /etc/nginx/
