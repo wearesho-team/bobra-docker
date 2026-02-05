@@ -1,6 +1,6 @@
 # syntax = docker/dockerfile:experimental
 
-FROM php:8.4.8-alpine
+FROM php:8.4.17-alpine
 
 ENV PHP_CGI=no
 ENV PHP_DEBUG=no
@@ -20,7 +20,7 @@ RUN set -ex \
         libzip-dev libzip \
         libsodium-dev libsodium \
         oniguruma-dev oniguruma \
-        icu-dev icu-libs\
+        icu-dev icu-libs icu-data-full\
         pcre-dev pcre \
         curl-dev \
         alpine-sdk linux-headers \
