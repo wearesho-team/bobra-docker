@@ -1,8 +1,8 @@
-FROM alpine:3.12
+FROM alpine:3.23
 
 LABEL maintainer="Wearesho Team <cto@wearesho.com>"
 
-ENV NGINX_VERSION=1.29.1
+ENV NGINX_VERSION=1.31.0
 ENV HEADERS_MORE_VERSION=0.39
 
 RUN set -x \
@@ -52,13 +52,12 @@ RUN set -x \
                     --with-pcre \
                     --with-http_gzip_static_module \
                     --with-http_realip_module \
-                    --without-http_rewrite_module \
                     --without-http-cache \
                     --add-module=./headers-more-nginx-module-${HEADERS_MORE_VERSION} \
                     --add-module=./ngx_brotli \
     && make && make install \
     && apk add --no-cache zlib pcre && apk del .build-deps apk-tools  \
-    && rm -r $tempDir /etc/ssl /etc/apk /etc/nginx \
+    && rm -rf $tempDir /etc/ssl /etc/apk /etc/nginx \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log \
     && mkdir -p /var/cache/nginx && chown -R nginx:nginx /var/cache/nginx \
