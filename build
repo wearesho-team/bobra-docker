@@ -1,10 +1,20 @@
 #!/usr/bin/env bash
 
+# Builder used for all images. A `docker-container` driver is required: the
+# default `docker` driver cannot build more than one platform at a time.
+#   docker buildx create --name bobra --driver docker-container --bootstrap
+BUILDER=${BUILDER:-bobra}
+
+# Architectures every image is published for, unless a meta.json overrides it
+# with its own "platforms" key. Building arm64 on an x86 host goes through QEMU
+# emulation and is roughly 10-20x slower than native.
+#   docker run --privileged --rm tonistiigi/binfmt --install arm64
+DEFAULT_PLATFORMS=${PLATFORMS:-linux/amd64,linux/arm64}
+
 function docker_tag_exists() {
-    REPOSITORY=${1}
-    TAG=${2}
-    URL=https://index.docker.io/v1/repositories/${REPOSITORY}/tags/${TAG}
-    curl --silent -f -lSL ${URL} 2> /dev/null > /dev/null
+    # Reads the registry manifest. Unlike the old v1 API (removed by Docker Hub,
+    # it now answers 410) this also understands multi-arch manifest lists.
+    docker buildx imagetools inspect "${1}:${2}" > /dev/null 2>&1
 }
 function get_json_attribute() {
     jq -r ".${2}" $1;
@@ -30,14 +40,51 @@ function build_project() {
 
     IMAGE_TAG=${REPOSITORY}:${TAG}
     DOCKER_FILE=${DIRECTORY}/Dockerfile
-    echo ">> building file ${DOCKER_FILE}"
-    DOCKER_BUILDKIT=1 docker build --rm -t ${IMAGE_TAG} -f ${DOCKER_FILE} ./${DIRECTORY} || exit 1
-    docker tag ${IMAGE_TAG} ${REPOSITORY}:latest
 
-    if ! ([[ -z ${PUBLISH} ]]); then
-        echo ">> pushing image ${IMAGE_TAG}"
-        docker push ${IMAGE_TAG} && docker push ${REPOSITORY}:latest || exit 2
+    # Per-image platform override, e.g. an image that only makes sense on amd64.
+    PROJECT_PLATFORMS=$(get_json_attribute ${META_FILE} platforms)
+    if [ "${PROJECT_PLATFORMS}" == "null" ]; then
+        PROJECT_PLATFORMS=${DEFAULT_PLATFORMS}
     fi;
+
+    # Images sharing a repository with another project (bobra/php and its debug
+    # variant) opt out of ":latest" so they do not overwrite each other.
+    TAGS=(-t "${IMAGE_TAG}")
+    if [ "$(get_json_attribute ${META_FILE} latest)" != "false" ]; then
+        TAGS+=(-t "${REPOSITORY}:latest")
+    fi;
+
+    # CPU tuning overrides, forwarded to the ARGs declared in nginx/Dockerfile.
+    BUILD_ARGS=()
+    [ -n "${CPU_MARCH_AMD64}" ] && BUILD_ARGS+=(--build-arg "CPU_MARCH_AMD64=${CPU_MARCH_AMD64}")
+    [ -n "${CPU_MARCH_ARM64}" ] && BUILD_ARGS+=(--build-arg "CPU_MARCH_ARM64=${CPU_MARCH_ARM64}")
+    [ -n "${CPU_FLAGS}" ] && BUILD_ARGS+=(--build-arg "CPU_FLAGS=${CPU_FLAGS}")
+
+    echo ">> building file ${DOCKER_FILE}"
+    if [[ -z ${PUBLISH} ]]; then
+        # Local build: host architecture only, so the result can be loaded into
+        # the local image store. A multi-platform build has no single image to
+        # load and would have to be pushed instead.
+        docker buildx build --builder ${BUILDER} \
+            "${TAGS[@]}" "${BUILD_ARGS[@]}" \
+            --load \
+            -f ${DOCKER_FILE} ./${DIRECTORY} || exit 1
+        return;
+    fi;
+
+    # Publishing build: every platform at once, straight to the registry as a
+    # single manifest list, so `docker pull ${IMAGE_TAG}` resolves to the right
+    # architecture on its own. Both tags have to be passed here - a manifest
+    # list never exists locally, so `docker tag` cannot be used afterwards.
+    # --provenance=false keeps buildx from attaching attestation manifests,
+    # which show up as bogus "unknown/unknown" platform entries.
+    echo ">> pushing image ${IMAGE_TAG} (${PROJECT_PLATFORMS})"
+    docker buildx build --builder ${BUILDER} \
+        --platform ${PROJECT_PLATFORMS} \
+        "${TAGS[@]}" "${BUILD_ARGS[@]}" \
+        --provenance=false \
+        --push \
+        -f ${DOCKER_FILE} ./${DIRECTORY} || exit 2
 }
 
 if [[ -z ${1} ]]; then
