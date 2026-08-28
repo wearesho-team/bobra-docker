@@ -26,11 +26,14 @@ RUN set -ex \
         alpine-sdk linux-headers \
     && docker-php-source extract \
     && cd /usr/src/php \
+    # The build triplet must follow the target architecture, otherwise the
+    # arm64 image is configured as x86_64 and the build fails.
+    && export BUILD_TRIPLET="$(apk --print-arch)-linux-musl" \
     && export CFLAGS="$PHP_CFLAGS" \
        		CPPFLAGS="$PHP_CPPFLAGS" \
        		LDFLAGS="$PHP_LDFLAGS" \
     && ./configure \
-        --build=x86_64-linux-musl \
+        --build=${BUILD_TRIPLET} \
         --with-config-file-path=/usr/local/etc/php \
         --with-config-file-scan-dir=/usr/local/etc/php/conf.d \
         --enable-option-checking=fatal \
