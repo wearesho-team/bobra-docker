@@ -67,9 +67,13 @@ RUN set -x \
     && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_C_FLAGS="${OPT_CFLAGS}" -DCMAKE_CXX_FLAGS="${OPT_CFLAGS}" -DCMAKE_INSTALL_PREFIX=./installed .. \
     && cmake --build . --config Release --target brotlienc \
     && cd ../../../.. \
-    && export CFLAGS="${OPT_CFLAGS}" \
-    && export LDFLAGS="${OPT_LDFLAGS}" \
-    && ./configure --prefix=/etc/nginx \
+    # Passed through nginx's own options rather than the CFLAGS/LDFLAGS
+    # environment, which its configure script does not read - the linker flags
+    # below were silently dropped before. As a side effect `nginx -V` now
+    # reports the flags the binary was actually built with.
+    && ./configure --with-cc-opt="${OPT_CFLAGS}" \
+                    --with-ld-opt="${OPT_LDFLAGS}" \
+                    --prefix=/etc/nginx \
                     --sbin-path=/usr/sbin/nginx \
                     --modules-path=/usr/lib/nginx/modules \
                     --conf-path=/etc/nginx/nginx.conf \
