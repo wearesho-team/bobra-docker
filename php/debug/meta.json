@@ -1,4 +1,5 @@
 {
   "repository": "bobra/php",
-  "tag": "8.4.17-debug"
+  "tag": "8.4.17-debug",
+  "platforms": "linux/amd64,linux/arm64"
 }
