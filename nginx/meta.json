@@ -1,5 +1,5 @@
 {
   "repository": "bobra/nginx",
-  "tag": "1.31.4.1",
+  "tag": "1.31.4.2",
   "platforms": "linux/amd64,linux/arm64"
 }
