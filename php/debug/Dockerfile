@@ -83,7 +83,8 @@ RUN set -ex \
     && (find /usr/local/bin /usr/local/sbin -type f -perm +0111 -exec strip --strip-all '{}' + || true) \
     && make clean \
     && apk add libsodium-dev && mkdir -p /usr/local/etc/php/conf.d/ \
-    && wget https://xdebug.org/files/xdebug-3.4.1.tgz \
+    && wget -O xdebug-3.4.1.tgz https://pecl.php.net/get/xdebug-3.4.1.tgz \
+    && echo "4d96bcded78dbd271fb344c119171b625a8597cd67fc6899ec5e019549f1bb87 *xdebug-3.4.1.tgz" | sha256sum -c - \
     && tar -xvzf xdebug-3.4.1.tgz \
     && cd xdebug-3.4.1 \
     && phpize \
