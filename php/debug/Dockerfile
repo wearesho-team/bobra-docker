@@ -1,6 +1,18 @@
 # syntax = docker/dockerfile:experimental
 
-FROM php:8.4.27-alpine
+FROM php:8.4.26-alpine
+
+# The official php:8.4.27-alpine image is not published yet. PHP is rebuilt from
+# /usr/src/php.tar.xz below anyway, so swap in the 8.4.27 release tarball.
+# Once the official image is out, set FROM to it and drop this block.
+ENV PHP_VERSION=8.4.27
+ENV PHP_URL="https://www.php.net/distributions/php-8.4.27.tar.xz" \
+    PHP_ASC_URL="https://www.php.net/distributions/php-8.4.27.tar.xz.asc"
+ENV PHP_SHA256="dcf93923b0e38e0d5252b25b796520b5a47761a08b3488b6d0b5d1115764d3f0"
+RUN set -ex \
+    && curl -fsSL -o /usr/src/php.tar.xz "$PHP_URL" \
+    && curl -fsSL -o /usr/src/php.tar.xz.asc "$PHP_ASC_URL" \
+    && echo "$PHP_SHA256 */usr/src/php.tar.xz" | sha256sum -c -
 
 ENV PHP_CGI=no
 ENV PHP_DEBUG=no
