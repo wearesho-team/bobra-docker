@@ -39,7 +39,16 @@ function build_project() {
     fi;
 
     IMAGE_TAG=${REPOSITORY}:${TAG}
-    DOCKER_FILE=${DIRECTORY}/Dockerfile
+
+    # A project can build a stage of another project's Dockerfile (path relative
+    # to its own directory), e.g. php/debug builds the "debug" stage of
+    # php/Dockerfile so both images share one PHP compile.
+    DOCKER_FILE=$(get_json_attribute ${META_FILE} dockerfile)
+    if [ "${DOCKER_FILE}" == "null" ]; then
+        DOCKER_FILE=Dockerfile
+    fi;
+    DOCKER_FILE=${DIRECTORY}/${DOCKER_FILE}
+    TARGET=$(get_json_attribute ${META_FILE} target)
 
     # Per-image platform override, e.g. an image that only makes sense on amd64.
     PROJECT_PLATFORMS=$(get_json_attribute ${META_FILE} platforms)
@@ -59,6 +68,10 @@ function build_project() {
     [ -n "${CPU_MARCH_AMD64}" ] && BUILD_ARGS+=(--build-arg "CPU_MARCH_AMD64=${CPU_MARCH_AMD64}")
     [ -n "${CPU_MARCH_ARM64}" ] && BUILD_ARGS+=(--build-arg "CPU_MARCH_ARM64=${CPU_MARCH_ARM64}")
     [ -n "${CPU_FLAGS}" ] && BUILD_ARGS+=(--build-arg "CPU_FLAGS=${CPU_FLAGS}")
+
+    if [ "${TARGET}" != "null" ]; then
+        BUILD_ARGS+=(--target "${TARGET}")
+    fi;
 
     echo ">> building file ${DOCKER_FILE}"
     if [[ -z ${PUBLISH} ]]; then

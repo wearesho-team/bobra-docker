@@ -2,7 +2,10 @@
 
 Same configuration as bobra/php but enabled Xdebug
 
-When modifying bobra/php image do not forget to move changes to debug image!
+There is no separate Dockerfile: this image is the `debug` stage of
+[php/Dockerfile](../Dockerfile) (see `dockerfile` and `target` in `meta.json`).
+It is built on top of the same PHP compile as bobra/php, so changes there apply
+to both images. Only `xdebug.ini`, `php.ini` and `php-fpm.conf` live here.
 
 ## Usage
 
