@@ -30,8 +30,9 @@ into the local docker store. With `PUBLISH`, every architecture is built and
 pushed straight to the registry - a multi-arch image cannot exist locally, so
 nothing is left behind on the build machine.
 
-Building `linux/arm64` on an x86 host runs under emulation and is roughly 10-20x
-slower than native.
+`php` and `php/debug` share one PHP compile per architecture through the
+builder's cache: whichever of them is built second on the same builder only adds
+its own layers on top.
 
 ### Options
 | Variable | Default | Description |

@@ -1,6 +1,6 @@
 # syntax = docker/dockerfile:experimental
 
-FROM php:8.4.27-alpine
+FROM php:8.4.27-alpine AS build
 
 ENV PHP_CGI=no
 ENV PHP_DEBUG=no
@@ -78,6 +78,39 @@ RUN set -ex \
     && rm -r /tmp /var/cache/ && mkdir /tmp /var/cache/ \
     && chown -R www-data /tmp \
     && php -v && php -m
+
+# bobra/php:*-debug: the PHP build above plus Xdebug, so both images share a
+# single PHP compile per architecture. It is built with php/debug as context,
+# which is where its xdebug.ini, php.ini and php-fpm.conf come from.
+FROM build AS debug
+
+RUN set -ex \
+    && apk add --no-cache --virtual .xdebug-deps $PHPIZE_DEPS linux-headers \
+    && export CFLAGS="$PHP_CFLAGS" \
+       		CPPFLAGS="$PHP_CPPFLAGS" \
+       		LDFLAGS="$PHP_LDFLAGS" \
+    && mkdir /usr/src/xdebug && cd /usr/src/xdebug \
+    && wget -O xdebug-3.4.1.tgz https://pecl.php.net/get/xdebug-3.4.1.tgz \
+    && echo "4d96bcded78dbd271fb344c119171b625a8597cd67fc6899ec5e019549f1bb87 *xdebug-3.4.1.tgz" | sha256sum -c - \
+    && tar -xzf xdebug-3.4.1.tgz \
+    && cd xdebug-3.4.1 \
+    && phpize \
+    && ./configure \
+    && make -j "$(nproc)" \
+    && cp modules/xdebug.so "$(php-config --extension-dir)" \
+    && cd / && rm -r /usr/src/xdebug \
+    && apk del .xdebug-deps \
+    && php -d zend_extension=xdebug -v
+
+COPY xdebug.ini /usr/local/etc/php/conf.d/99-xdebug.ini
+COPY php.ini /usr/local/etc/php/
+COPY php-fpm.conf /usr/local/etc/php-fpm.conf
+
+WORKDIR /app
+
+# bobra/php. Kept as the last stage so it is what a build without --target
+# produces.
+FROM build
 
 COPY php.ini /usr/local/etc/php/
 COPY php-fpm.conf /usr/local/etc/php-fpm.conf
