@@ -1,0 +1,69 @@
+name: Build
+
+# Builds the images a pull request touches, natively on both architectures, so
+# an update is known to compile before it is merged. Nothing is pushed:
+# publishing stays a manual `PUBLISH=1 ./build`.
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      projects: ${{ steps.changes.outputs.projects }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - id: changes
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          # A pull request is checked out as a merge commit, so its first parent
+          # is the base branch. A manual run builds everything.
+          if [ "${EVENT}" = pull_request ]; then
+            files=$(git diff --name-only HEAD^1 HEAD | grep -v '\.md$' || true)
+          else
+            files=build
+          fi
+          everything='^(build|\.github/workflows/build\.yml)$'
+          projects=()
+          # php and php/debug run on one builder, so the debug image reuses
+          # the PHP compile instead of repeating it.
+          grep -qE "${everything}|^php/(Dockerfile|php\.ini|php-fpm\.conf|meta\.json|debug/)" <<< "${files}" && projects+=("php php/debug")
+          grep -qE "${everything}|^php/composer/" <<< "${files}" && projects+=("php/composer")
+          grep -qE "${everything}|^nginx/" <<< "${files}" && projects+=("nginx")
+          echo "projects=$(jq -cn '$ARGS.positional' --args "${projects[@]}")" >> "${GITHUB_OUTPUT}"
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.projects != '[]'
+    name: ${{ matrix.projects }} (${{ matrix.runner == 'ubuntu-24.04-arm' && 'arm64' || 'amd64' }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        projects: ${{ fromJSON(needs.changes.outputs.projects) }}
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          name: bobra
+      - env:
+          PROJECTS: ${{ matrix.projects }}
+        run: |
+          for project in ${PROJECTS}; do
+            ./build "${project}"
+          done
