@@ -111,6 +111,14 @@ new tag together, and bobra/php-composer is tagged with the PHP version inside
 the composer image. `./sync` also updates the sha256 of the xdebug tarball when
 its version changes.
 
+### Vulnerability scan
+The [Scan](.github/workflows/scan.yml) workflow checks the published images (at
+the tags in `meta.json`) with Trivy every Monday. For each image with HIGH or
+CRITICAL vulnerabilities that have a fix, it keeps an issue labelled
+`vulnerabilities` open, comments when the findings change, and closes it once the
+image is clean. Since the packages come from Alpine, an image can need a
+rebuild with a new revision tag even when no version in this repository changes.
+
 ### Setup
 Renovate pushes with a GitHub App token: PRs pushed with the workflow's own
 `GITHUB_TOKEN` would not trigger the Build workflow.
