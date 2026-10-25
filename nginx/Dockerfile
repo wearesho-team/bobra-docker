@@ -2,8 +2,15 @@ FROM alpine:3.23
 
 LABEL maintainer="Wearesho Team <cto@wearesho.com>"
 
+# The "# renovate:" comments tell Renovate where to look for new releases (see
+# renovate.json). After changing a version by hand, run ./sync to update the tag.
+# renovate: datasource=github-tags depName=nginx/nginx versioning=semver extractVersion=^release-(?<version>.+)$
 ENV NGINX_VERSION=1.31.4
+# renovate: datasource=github-tags depName=openresty/headers-more-nginx-module versioning=loose extractVersion=^v(?<version>.+)$
 ENV HEADERS_MORE_VERSION=0.40
+# ngx_brotli has no releases, so it is pinned to a commit of its master branch.
+# renovate: datasource=git-refs depName=ngx_brotli packageName=https://github.com/google/ngx_brotli branch=master
+ENV NGX_BROTLI_COMMIT=53e0fb55f250f48fe80c0ddbf6c0f7103cdbaae1
 
 # --- Target architecture and CPU tuning --------------------------------------
 # TARGETARCH is filled in automatically by `docker buildx build --platform ...`.
@@ -61,7 +68,9 @@ RUN set -x \
     && cd nginx-${NGINX_VERSION} \
     && wget "https://github.com/openresty/headers-more-nginx-module/archive/v${HEADERS_MORE_VERSION}.tar.gz" -O headers-more-nginx-module.tar.gz \
     && tar zxvf headers-more-nginx-module.tar.gz \
-    && git clone --recurse-submodules -j8 https://github.com/google/ngx_brotli \
+    && git clone https://github.com/google/ngx_brotli \
+    && git -C ngx_brotli checkout ${NGX_BROTLI_COMMIT} \
+    && git -C ngx_brotli submodule update --init --recursive -j8 \
     && cd ngx_brotli/deps/brotli \
     && mkdir out && cd out \
     && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_C_FLAGS="${OPT_CFLAGS}" -DCMAKE_CXX_FLAGS="${OPT_CFLAGS}" -DCMAKE_INSTALL_PREFIX=./installed .. \

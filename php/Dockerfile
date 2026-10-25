@@ -84,16 +84,23 @@ RUN set -ex \
 # which is where its xdebug.ini, php.ini and php-fpm.conf come from.
 FROM build AS debug
 
+# Tracked on PECL itself (see customDatasources in renovate.json): not every
+# xdebug release is published there, e.g. 3.5.2 never was.
+# renovate: datasource=custom.pecl depName=xdebug
+ARG XDEBUG_VERSION=3.5.3
+# sha256 of the PECL tarball. ./sync recomputes it when XDEBUG_VERSION changes.
+ARG XDEBUG_SHA256=f073de91bea046106abf4d6071c963ea71e58571df6ce58948ceca89d121cb2d
+
 RUN set -ex \
     && apk add --no-cache --virtual .xdebug-deps $PHPIZE_DEPS linux-headers \
     && export CFLAGS="$PHP_CFLAGS" \
        		CPPFLAGS="$PHP_CPPFLAGS" \
        		LDFLAGS="$PHP_LDFLAGS" \
     && mkdir /usr/src/xdebug && cd /usr/src/xdebug \
-    && wget -O xdebug-3.5.3.tgz https://pecl.php.net/get/xdebug-3.5.3.tgz \
-    && echo "f073de91bea046106abf4d6071c963ea71e58571df6ce58948ceca89d121cb2d *xdebug-3.5.3.tgz" | sha256sum -c - \
-    && tar -xzf xdebug-3.5.3.tgz \
-    && cd xdebug-3.5.3 \
+    && wget -O xdebug-${XDEBUG_VERSION}.tgz https://pecl.php.net/get/xdebug-${XDEBUG_VERSION}.tgz \
+    && echo "${XDEBUG_SHA256} *xdebug-${XDEBUG_VERSION}.tgz" | sha256sum -c - \
+    && tar -xzf xdebug-${XDEBUG_VERSION}.tgz \
+    && cd xdebug-${XDEBUG_VERSION} \
     && phpize \
     && ./configure \
     && make -j "$(nproc)" \

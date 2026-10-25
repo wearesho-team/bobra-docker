@@ -1,0 +1,82 @@
+name: Scan
+
+# Weekly vulnerability scan of the published images, at the tags in meta.json.
+# Keeps one issue per image with fixable HIGH and CRITICAL findings, comments
+# when they change, and closes it once the image comes back clean. The packages
+# in the images come from Alpine, so they can need a rebuild while no version in
+# this repository changes, which Renovate has no way to notice.
+on:
+  schedule:
+    - cron: "41 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      LABEL: vulnerabilities
+      # Pinned by digest: malicious Trivy images were pushed to Docker Hub in
+      # March 2026 (CVE-2026-33634). Docker Hub rather than ghcr.io because only
+      # it reports release dates, which the one-week delay in renovate.json needs.
+      TRIVY_IMAGE: aquasec/trivy:0.76.0@sha256:2416d1f74045b57274df1a340eee6b510cacd73c66a6ccb8da092b117eb7d222
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: |
+          gh label create "${LABEL}" --force --color B60205 \
+            --description "Fixable vulnerabilities in a published image"
+          open=$(gh issue list --label "${LABEL}" --state open --limit 100 --json number,title,body)
+          reported=()
+          for meta in $(git ls-files '*meta.json'); do
+            dir=$(dirname "${meta}")
+            image=$(jq -r '.repository + ":" + .tag' "${meta}")
+            if ! docker buildx imagetools inspect "${image}" > /dev/null 2>&1; then
+              echo "::notice::${image} is not published yet, skipping it"
+              continue
+            fi
+            findings=$(docker run --rm -v "${RUNNER_TEMP}/trivy:/cache" "${TRIVY_IMAGE}" image \
+                --cache-dir /cache --quiet --format json \
+                --ignore-unfixed --severity HIGH,CRITICAL "${image}" \
+              | jq -r '[.Results[]?.Vulnerabilities[]?
+                  | "| \(.VulnerabilityID) | \(.Severity) | \(.PkgName) | \(.InstalledVersion) | \(.FixedVersion) |"]
+                | unique | .[]')
+            if [ -z "${findings}" ]; then
+              continue
+            fi
+
+            title="Fixable vulnerabilities in ${image}"
+            reported+=("${title}")
+            table=$(printf '%s\n' \
+              "| Vulnerability | Severity | Package | Installed | Fixed |" \
+              "| --- | --- | --- | --- | --- |" \
+              "${findings}")
+            body=$(printf '%s\n' \
+              "Trivy found HIGH or CRITICAL vulnerabilities with a fixed version in \`${image}\`:" \
+              "" \
+              "${table}" \
+              "" \
+              "A rebuild picks up fixes for the packages the Dockerfile installs: give \`${dir}/meta.json\` the next revision of its tag (\`1.2.3\` → \`1.2.3.1\`) and run \`PUBLISH=1 ./build ${dir}\`. Packages that come with the base image are only fixed by a newer base image (look for a pending Renovate PR) or by an \`apk upgrade\` in the Dockerfile." \
+              "" \
+              "Kept up to date by the weekly [Scan](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/workflows/scan.yml) workflow, which closes this issue once the image is clean.")
+
+            issue=$(jq -c --arg title "${title}" 'map(select(.title == $title))[0] // empty' <<< "${open}")
+            if [ -z "${issue}" ]; then
+              gh issue create --title "${title}" --label "${LABEL}" --body "${body}"
+            elif [ "$(jq -r .body <<< "${issue}" | tr -d '\r' | grep '^| ')" != "${table}" ]; then
+              number=$(jq -r .number <<< "${issue}")
+              gh issue edit "${number}" --body "${body}"
+              gh issue comment "${number}" --body "The findings changed, see the updated list in the description."
+            fi
+          done
+
+          jq -r '.[] | [.number, .title] | @tsv' <<< "${open}" | while IFS=$'\t' read -r number title; do
+            if ! printf '%s\n' "${reported[@]}" | grep -qxF "${title}"; then
+              gh issue close "${number}" --comment "No longer reported: either the vulnerabilities are fixed in the published image, or its tag in meta.json moved on."
+            fi
+          done
