@@ -1,5 +1,5 @@
 {
   "repository": "bobra/php-composer",
-  "tag": "8.4.7",
+  "tag": "8.5.12",
   "platforms": "linux/amd64,linux/arm64"
 }
