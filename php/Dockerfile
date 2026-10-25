@@ -1,6 +1,6 @@
 # syntax = docker/dockerfile:experimental
 
-FROM php:8.4.27-alpine AS build
+FROM php:8.5.12-alpine AS build
 
 ENV PHP_CGI=no
 ENV PHP_DEBUG=no
@@ -48,7 +48,6 @@ RUN set -ex \
         --disable-session \
         --disable-cgi \
         --enable-soap \
-        --enable-opcache \
         --enable-exif \
         --enable-dom \
         --enable-intl \
@@ -71,8 +70,9 @@ RUN set -ex \
     && (find /usr/local/bin /usr/local/sbin -type f -perm +0111 -exec strip --strip-all '{}' + || true) \
     && make clean \
     && apk add libsodium-dev && mkdir -p /usr/local/etc/php/conf.d/ \
-    && docker-php-ext-configure opcache --enable-opcache \
-    && docker-php-ext-install opcache sodium \
+    # OPcache is compiled into PHP itself since 8.5: there is no configure
+    # option or shared extension for it any more.
+    && docker-php-ext-install sodium \
     && docker-php-source delete \
     && apk del *-dev alpine-sdk curl gd zip linux-headers \
     && rm -r /tmp /var/cache/ && mkdir /tmp /var/cache/ \
@@ -90,10 +90,10 @@ RUN set -ex \
        		CPPFLAGS="$PHP_CPPFLAGS" \
        		LDFLAGS="$PHP_LDFLAGS" \
     && mkdir /usr/src/xdebug && cd /usr/src/xdebug \
-    && wget -O xdebug-3.4.1.tgz https://pecl.php.net/get/xdebug-3.4.1.tgz \
-    && echo "4d96bcded78dbd271fb344c119171b625a8597cd67fc6899ec5e019549f1bb87 *xdebug-3.4.1.tgz" | sha256sum -c - \
-    && tar -xzf xdebug-3.4.1.tgz \
-    && cd xdebug-3.4.1 \
+    && wget -O xdebug-3.5.3.tgz https://pecl.php.net/get/xdebug-3.5.3.tgz \
+    && echo "f073de91bea046106abf4d6071c963ea71e58571df6ce58948ceca89d121cb2d *xdebug-3.5.3.tgz" | sha256sum -c - \
+    && tar -xzf xdebug-3.5.3.tgz \
+    && cd xdebug-3.5.3 \
     && phpize \
     && ./configure \
     && make -j "$(nproc)" \
