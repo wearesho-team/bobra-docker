@@ -77,6 +77,52 @@ its own layers on top.
 Note that `-march=native` produces an image that only runs on the CPU that built
 it, which is why it is not the default.
 
+## Updates
+[Renovate](https://docs.renovatebot.com/) checks every pinned version once a
+day ([workflow](.github/workflows/renovate.yml), [config](renovate.json)) and
+keeps a "Dependency Dashboard" issue listing what it found:
+- patch releases (PHP, composer, nginx, xdebug) and rebuilt base images (a new
+  `composer` digest, a new ngx_brotli commit) get a PR right away;
+- minor and major releases (PHP 8.6, Alpine 3.24, ...) wait on the dashboard
+  until their checkbox is ticked;
+- the actions and images used by the workflows are updated in one PR on
+  Mondays, with releases at least a week old.
+
+Each PR also gives the image its new tag and is built natively on amd64 and
+arm64 by the [Build](.github/workflows/build.yml) workflow. Nothing is
+published automatically: after merging, publish with `PUBLISH=1 ./build`.
+
+Versions that are not in a `FROM` line are found through the `# renovate:`
+comments in the Dockerfiles.
+
+### Tags
+`PUBLISH=1 ./build` skips an image whose tag is already published, so every
+change to an image needs a new tag in its `meta.json`. `./sync` sets it, and
+Renovate runs it on every update branch. After editing a Dockerfile or config
+by hand, run it before committing:
+```bash
+./sync
+```
+An image whose files changed since the last commit gets the new upstream
+version as its tag (nginx `1.31.4.2` -> `1.31.8`). If only something else
+changed, it gets the next revision of its tag (`1.31.8` -> `1.31.8.1`). A tag
+already changed by hand is kept. bobra/php and its `-debug` variant always get a
+new tag together, and bobra/php-composer is tagged with the PHP version inside
+the composer image. `./sync` also updates the sha256 of the xdebug tarball when
+its version changes.
+
+### Setup
+Renovate pushes with a GitHub App token: PRs pushed with the workflow's own
+`GITHUB_TOKEN` would not trigger the Build workflow.
+1. Create a GitHub App with webhooks disabled and these repository
+   permissions: Checks, Commit statuses, Contents, Issues, Pull requests and
+   Workflows set to read and write (Metadata stays read-only).
+2. Install it on this repository.
+3. Add the app's Client ID as the `RENOVATE_CLIENT_ID` repository variable and
+   one of its private keys as the `RENOVATE_PRIVATE_KEY` repository secret.
+4. Run the Renovate workflow once by hand (Actions -> Renovate -> Run workflow)
+   to create the Dependency Dashboard.
+
 ## Contents
 - [php](./php) - PHP Image for Bobra Backend
 - [nginx](./nginx) - Nginx Image using php-fpm for Bobra Backend
